@@ -25,6 +25,30 @@ final class HttpRequest
             $path = '/';
         }
 
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        if (is_string($scriptName) && $scriptName !== '') {
+            $scriptDir = str_replace('\\', '/', dirname($scriptName));
+            if ($scriptDir === '/' || $scriptDir === '.') {
+                $scriptDir = '';
+            }
+
+            // Remove script directory from path
+            if ($scriptDir !== '' && str_starts_with($path, $scriptDir)) {
+                $path = substr($path, strlen($scriptDir));
+            }
+
+            // Remove index.php from path if present
+            $scriptFile = basename($scriptName);
+            if (str_starts_with($path, '/' . $scriptFile)) {
+                $path = substr($path, strlen($scriptFile) + 1);
+            }
+        }
+        
+        if ($path === '' || $path === false) {
+            $path = '/';
+        }
+
+
         $headers = [];
         foreach ($_SERVER as $key => $value) {
             if (!is_string($key)) {
@@ -96,4 +120,15 @@ final class HttpRequest
     {
         return $this->post;
     }
+
+    public function jsonBody(): array
+    {
+        if ($this->body === null || $this->body === '') {
+            return [];
+        }
+
+        $data = json_decode($this->body, true);
+        return is_array($data) ? $data : [];
+    }
 }
+

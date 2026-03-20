@@ -38,6 +38,12 @@ final class HttpResponse
         return new self($statusCode, $headers, $body);
     }
 
+    public static function redirect(string $url, int $statusCode = 302): self
+    {
+        return new self($statusCode, ['location' => $url]);
+    }
+
+
     public function statusCode(): int
     {
         return $this->statusCode;

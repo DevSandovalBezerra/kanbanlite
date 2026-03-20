@@ -1,0 +1,241 @@
+/* ================================================================
+   KanbanLite — Board & Card Styles
+   ================================================================ */
+
+/* ── Scrollbars ──────────────────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar,
+.task-list::-webkit-scrollbar           { width: 5px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track,
+.task-list::-webkit-scrollbar-track     { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.task-list::-webkit-scrollbar-thumb     { background: #e2e8f0; border-radius: 10px; }
+.task-list { scrollbar-width: thin; scrollbar-color: #e2e8f0 transparent; }
+
+/* ── Board background texture ────────────────────────────────── */
+main {
+    background-image:
+        radial-gradient(circle at 10% 20%, rgba(99,102,241,.03) 0%, transparent 20%),
+        radial-gradient(circle at 90% 80%, rgba(168, 85,247,.03) 0%, transparent 20%);
+}
+
+/* ── Task card ───────────────────────────────────────────────── */
+@keyframes fadeInCard {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.task-card {
+    background: #ffffff;
+    padding: 1.125rem;
+    border-radius: 1.25rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 2px 8px -2px rgba(0,0,0,.04);
+    cursor: grab;
+    transition: transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s ease, border-color .25s ease;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    animation: fadeInCard .35s ease-out both;
+}
+
+.task-card:hover {
+    transform: translateY(-3px) scale(1.008);
+    box-shadow: 0 10px 20px -6px rgba(99,102,241,.14);
+    border-color: rgba(99,102,241,.2);
+}
+
+.task-card:active { cursor: grabbing; }
+
+.task-card.dragging {
+    opacity: .45;
+    transform: scale(.92) rotate(1.5deg);
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,.2);
+}
+
+/* Left accent bar on hover */
+.task-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: #6366f1;
+    opacity: 0;
+    transition: opacity .25s ease;
+    border-radius: 0 2px 2px 0;
+}
+.task-card:hover::before { opacity: 1; }
+
+/* Drop-target column highlight */
+.task-list.drag-over { background: rgba(99,102,241,.04); }
+
+/* ── Priority badges ─────────────────────────────────────────── */
+.priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .2rem .55rem;
+    border-radius: .5rem;
+    font-size: .6rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+
+.priority-critical { background: #fff0f0; color: #b91c1c; border-color: #fecaca; }
+.priority-high     { background: #fff1f2; color: #e11d48; border-color: #ffe4e6; }
+.priority-medium   { background: #fffbeb; color: #d97706; border-color: #fef3c7; }
+.priority-low      { background: #f0f9ff; color: #0284c7; border-color: #e0f2fe; }
+
+/* ── Story-points badge ──────────────────────────────────────── */
+.story-points-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .2rem .55rem;
+    border-radius: .5rem;
+    font-size: .6rem;
+    font-weight: 800;
+    background: #eef2ff;
+    color: #6366f1;
+    border: 1px solid #e0e7ff;
+    letter-spacing: .04em;
+}
+
+/* ── Label pills ─────────────────────────────────────────────── */
+.label-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .15rem;
+    padding: .15rem .5rem;
+    border-radius: 9999px;
+    font-size: .62rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    line-height: 1.4;
+}
+
+/* ── Checklist block ─────────────────────────────────────────── */
+.checklist-block {
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 1rem;
+    padding: 1rem;
+}
+
+/* ── Attachment row ──────────────────────────────────────────── */
+.attachment-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: .75rem;
+    transition: border-color .2s;
+}
+.attachment-row:hover { border-color: #e0e7ff; }
+
+/* Drop-zone active */
+#attachment-dropzone.drag-active {
+    border-color: #6366f1;
+    background: #eef2ff;
+    color: #6366f1;
+}
+
+/* ── Comment block ───────────────────────────────────────────── */
+.comment-block { animation: fadeInCard .2s ease-out both; }
+
+/* ── Modal overlay scroll fix ────────────────────────────────── */
+#task-modal { overscroll-behavior: contain; }
+
+/* ── Section title helper ────────────────────────────────────── */
+.section-title {
+    font-size: .625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: .75rem;
+}
+
+/* ── Meta row ────────────────────────────────────────────────── */
+.meta-row { display: flex; align-items: flex-start; gap: .75rem; }
+.meta-label { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+
+/* ── Form inputs ─────────────────────────────────────────────── */
+.form-input {
+    width: 100%;
+    height: 3rem;
+    padding: 0 1rem;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 1rem;
+    font-size: .875rem;
+    font-weight: 500;
+    transition: box-shadow .2s, border-color .2s;
+    outline: none;
+    color: #1e293b;
+}
+.form-input:focus {
+    box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+    border-color: #818cf8;
+}
+textarea.form-input { height: auto; padding-top: .75rem; padding-bottom: .75rem; }
+
+/* ── Label utility (used in PHP @apply style tags) ───────────── */
+.label-xs {
+    font-size: .625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #94a3b8;
+    display: block;
+    margin-left: .25rem;
+}
+
+/* ── Quill rich-text editor ──────────────────────────────────── */
+.quill-editor .ql-toolbar {
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-radius: 1rem 1rem 0 0;
+    background: #fff;
+    padding: .4rem .75rem;
+}
+.quill-editor .ql-container {
+    border: none !important;
+    font-family: 'Inter', sans-serif;
+    font-size: .875rem;
+    border-radius: 0 0 1rem 1rem;
+}
+.quill-editor .ql-editor {
+    padding: .75rem 1rem;
+    min-height: inherit;
+    color: #334155;
+    line-height: 1.6;
+}
+.quill-editor .ql-editor.ql-blank::before {
+    color: #94a3b8;
+    font-style: normal;
+}
+/* Render rich HTML in view mode */
+#modal-desc img  { max-width: 100%; border-radius: .5rem; margin: .5rem 0; }
+#modal-desc a    { color: #6366f1; text-decoration: underline; }
+#modal-desc ul, #modal-desc ol { padding-left: 1.25rem; }
+#modal-desc strong { font-weight: 700; }
+#modal-desc em     { font-style: italic; }
+#modal-desc h2, #modal-desc h3 { font-weight: 700; margin: .5rem 0 .25rem; }
+
+/* ── Ghost button (xs) ───────────────────────────────────────── */
+.btn-ghost-xs {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: .7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    transition: color .2s;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+.btn-ghost-xs:hover { color: #6366f1; }

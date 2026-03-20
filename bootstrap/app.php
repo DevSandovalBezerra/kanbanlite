@@ -23,12 +23,19 @@ if (is_file($autoloadPath)) {
     });
 }
 
+$dbConfig = require dirname(__DIR__) . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'database.php';
+$pdo = \App\Repositories\PdoConnectionFactory::fromConfig($dbConfig);
+
 $router = new Router();
 
 $webRoutes = require dirname(__DIR__) . DIRECTORY_SEPARATOR . 'routes' . DIRECTORY_SEPARATOR . 'web.php';
-$webRoutes($router);
+$webRoutes($router, $pdo);
 
 $apiRoutes = require dirname(__DIR__) . DIRECTORY_SEPARATOR . 'routes' . DIRECTORY_SEPARATOR . 'api.php';
-$apiRoutes($router);
+$apiRoutes($router, $pdo);
+
+\App\Helpers\View::setTemplatesDir(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR . 'default');
 
 return $router;
+
+
