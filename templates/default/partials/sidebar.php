@@ -52,7 +52,14 @@
         </a>
 
         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 mb-2 mt-8">Sistema</div>
-        
+
+        <?php if (!empty($user_is_admin)): ?>
+        <a href="<?php echo $app_url ?? ''; ?>/admin/users" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition-all group">
+            <span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">manage_accounts</span>
+            Gerenciar Usuários
+        </a>
+        <?php endif; ?>
+
         <a href="#" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all group opacity-60">
             <span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">settings</span>
             Configurações

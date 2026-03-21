@@ -49,10 +49,15 @@
                         <!-- populated by JS -->
                     </div>
                 </div>
-                <a href="<?php echo $app_url ?? ''; ?>/boards?id=<?php echo $project->id; ?>" class="flex items-center gap-2 font-bold text-xs text-indigo-600 hover:text-indigo-700 transition-colors group/link">
-                   Ir para o Quadro
-                   <span class="material-symbols-outlined text-[18px] group-hover/link:translate-x-1 transition-transform">arrow_forward</span>
-                </a>
+                <div class="flex items-center gap-3">
+                    <a href="<?php echo $app_url ?? ''; ?>/projects/members?id=<?php echo $project->id; ?>" class="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors" title="Gerenciar membros">
+                        <span class="material-symbols-outlined text-[16px]">group</span>
+                    </a>
+                    <a href="<?php echo $app_url ?? ''; ?>/boards?id=<?php echo $project->id; ?>" class="flex items-center gap-2 font-bold text-xs text-indigo-600 hover:text-indigo-700 transition-colors group/link">
+                       Ir para o Quadro
+                       <span class="material-symbols-outlined text-[18px] group-hover/link:translate-x-1 transition-transform">arrow_forward</span>
+                    </a>
+                </div>
             </div>
         </div>
         <?php endforeach; ?>

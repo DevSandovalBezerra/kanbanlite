@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\DTO\ProjectDTO;
 use App\Helpers\HttpRequest;
 use App\Helpers\HttpResponse;
+use App\Repositories\PdoProjectMemberRepository;
 use App\Repositories\ProjectRepository;
 use App\Services\Project\CreateProjectService;
 use App\Services\SessionStore;
@@ -16,7 +17,8 @@ final class ProjectController
     public function __construct(
         private readonly ProjectRepository $repository,
         private readonly CreateProjectService $createService,
-        private readonly ?SessionStore $session = null
+        private readonly ?SessionStore $session = null,
+        private readonly ?PdoProjectMemberRepository $memberRepo = null
     ) {}
 
     public function index(HttpRequest $request): HttpResponse
@@ -56,6 +58,17 @@ final class ProjectController
 
         try {
             $id = $this->createService->execute($dto);
+
+            // Auto-insert creator as owner in project_members
+            if ($this->memberRepo !== null) {
+                $this->memberRepo->add(
+                    projectId: $id,
+                    userId:    $userId,
+                    role:      'owner',
+                    invitedBy: $userId
+                );
+            }
+
             return HttpResponse::json(['ok' => true, 'id' => $id], 201);
         } catch (\Exception $e) {
             return HttpResponse::json(['ok' => false, 'error' => $e->getMessage()], 500);

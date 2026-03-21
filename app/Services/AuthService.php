@@ -33,6 +33,7 @@ final class AuthService
         $this->session->regenerate();
         $this->session->set('user_id', $record->id);
         $this->session->set('company_id', $record->companyId);
+        $this->session->set('user_is_admin', $record->isAdmin);
 
         return new AuthServiceResult(AuthServiceResult::OK);
     }

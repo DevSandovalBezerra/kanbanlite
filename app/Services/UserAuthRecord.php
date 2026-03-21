@@ -11,7 +11,8 @@ final class UserAuthRecord
         public readonly int $companyId,
         public readonly string $email,
         public readonly string $passwordHash,
-        public readonly string $status
+        public readonly string $status,
+        public readonly bool $isAdmin = false,
     ) {
     }
 }

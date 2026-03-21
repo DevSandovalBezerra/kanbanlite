@@ -7,6 +7,10 @@ namespace App\Controllers;
 use App\DTO\TaskDTO;
 use App\Helpers\HttpRequest;
 use App\Helpers\HttpResponse;
+use App\Policies\ProjectPolicy;
+use App\Repositories\PdoColumnRepository;
+use App\Repositories\PdoProjectRepository;
+use App\Repositories\TaskRepository;
 use App\Services\SessionStore;
 use App\Services\Task\CreateTaskService;
 use App\Services\Task\MoveTaskService;
@@ -16,8 +20,11 @@ final class TaskController
     public function __construct(
         private readonly CreateTaskService $createTaskService,
         private readonly MoveTaskService $moveTaskService,
-        private readonly \App\Repositories\TaskRepository $taskRepo,
-        private readonly SessionStore $session
+        private readonly TaskRepository $taskRepo,
+        private readonly SessionStore $session,
+        private readonly ?PdoColumnRepository $columnRepo = null,
+        private readonly ?PdoProjectRepository $projectRepo = null,
+        private readonly ?ProjectPolicy $policy = null
     ) {
     }
 
@@ -33,7 +40,6 @@ final class TaskController
         return HttpResponse::json(array_map(fn ($t) => $t->toArray(), $tasks));
     }
 
-
     public function create(HttpRequest $request): HttpResponse
     {
         $payload = $this->decodeJsonBody($request);
@@ -46,25 +52,40 @@ final class TaskController
             return $this->apiError(401, 'unauthorized', 'Não autenticado.', []);
         }
 
-        // Basic validation
         $errors = [];
-        if (empty($payload['title'])) $errors['title'] = ['obrigatório'];
+        if (empty($payload['title']))     $errors['title']     = ['obrigatório'];
         if (empty($payload['column_id'])) $errors['column_id'] = ['obrigatório'];
-        
+
         if (!empty($errors)) {
             return $this->validationError($errors);
         }
 
+        $columnId = (int) $payload['column_id'];
+
+        // Double guard (S08)
+        if ($this->columnRepo !== null && $this->projectRepo !== null && $this->policy !== null) {
+            $companyId = (int) ($this->session->get('company_id') ?? 0);
+            $projectId = $this->columnRepo->resolveProjectId($columnId);
+
+            if ($projectId === null || !$this->projectRepo->belongsToCompany($projectId, $companyId)) {
+                return $this->apiError(404, 'not_found', 'Coluna não encontrada.', []);
+            }
+
+            if (!$this->policy->canWrite($projectId)) {
+                return $this->apiError(403, 'forbidden', 'Requer papel editor ou superior.', []);
+            }
+        }
+
         $dto = new TaskDTO(
-            columnId: (int) $payload['column_id'],
-            title: (string) $payload['title'],
+            columnId:    $columnId,
+            title:       (string) $payload['title'],
             description: self::sanitizeHtml((string) ($payload['description'] ?? '')),
-            priority: (string) ($payload['priority'] ?? 'medium'),
-            status: 'active',
-            position: (int) ($payload['position'] ?? 1),
-            createdBy: (int) $userId,
-            assignedTo: isset($payload['assigned_to']) ? (int) $payload['assigned_to'] : null,
-            deadline: isset($payload['deadline']) ? new \DateTimeImmutable($payload['deadline']) : null,
+            priority:    (string) ($payload['priority'] ?? 'medium'),
+            status:      'active',
+            position:    (int) ($payload['position'] ?? 1),
+            createdBy:   (int) $userId,
+            assignedTo:  isset($payload['assigned_to']) ? (int) $payload['assigned_to'] : null,
+            deadline:    isset($payload['deadline']) ? new \DateTimeImmutable($payload['deadline']) : null,
             storyPoints: isset($payload['story_points']) ? (int) $payload['story_points'] : null,
         );
 
@@ -90,26 +111,41 @@ final class TaskController
             return $this->apiError(404, 'not_found', 'Tarefa não encontrada.', []);
         }
 
+        // Double guard (S08)
+        if ($this->taskRepo instanceof \App\Repositories\PdoTaskRepository
+            && $this->projectRepo !== null
+            && $this->policy !== null
+        ) {
+            $companyId = (int) ($this->session->get('company_id') ?? 0);
+            $projectId = $this->taskRepo->resolveProjectId($taskId);
+
+            if ($projectId === null || !$this->projectRepo->belongsToCompany($projectId, $companyId)) {
+                return $this->apiError(404, 'not_found', 'Tarefa não encontrada.', []);
+            }
+
+            if (!$this->policy->canWrite($projectId)) {
+                return $this->apiError(403, 'forbidden', 'Requer papel editor ou superior.', []);
+            }
+        }
+
         $updated = new TaskDTO(
-            id: $existing->id,
-            columnId: $existing->columnId,
-            title: isset($payload['title']) ? (string) $payload['title'] : $existing->title,
-            description: isset($payload['description'])
-                ? self::sanitizeHtml((string) $payload['description'])
-                : $existing->description,
-            priority: isset($payload['priority']) ? (string) $payload['priority'] : $existing->priority,
-            status: $existing->status,
-            position: $existing->position,
-            createdBy: $existing->createdBy,
-            assignedTo: array_key_exists('assigned_to', $payload)
-                ? ($payload['assigned_to'] !== null ? (int) $payload['assigned_to'] : null)
-                : $existing->assignedTo,
-            deadline: array_key_exists('deadline', $payload)
-                ? ($payload['deadline'] ? new \DateTimeImmutable($payload['deadline']) : null)
-                : $existing->deadline,
+            id:          $existing->id,
+            columnId:    $existing->columnId,
+            title:       isset($payload['title'])       ? (string) $payload['title']                    : $existing->title,
+            description: isset($payload['description']) ? self::sanitizeHtml((string) $payload['description']) : $existing->description,
+            priority:    isset($payload['priority'])    ? (string) $payload['priority']                 : $existing->priority,
+            status:      $existing->status,
+            position:    $existing->position,
+            createdBy:   $existing->createdBy,
+            assignedTo:  array_key_exists('assigned_to', $payload)
+                            ? ($payload['assigned_to'] !== null ? (int) $payload['assigned_to'] : null)
+                            : $existing->assignedTo,
+            deadline:    array_key_exists('deadline', $payload)
+                            ? ($payload['deadline'] ? new \DateTimeImmutable($payload['deadline']) : null)
+                            : $existing->deadline,
             storyPoints: array_key_exists('story_points', $payload)
-                ? ($payload['story_points'] !== null ? (int) $payload['story_points'] : null)
-                : $existing->storyPoints,
+                            ? ($payload['story_points'] !== null ? (int) $payload['story_points'] : null)
+                            : $existing->storyPoints,
         );
 
         $ok = $this->taskRepo->update($updated);
@@ -126,12 +162,29 @@ final class TaskController
             return $this->validationError(['body' => ['json inválido']]);
         }
 
-        $taskId = (int) ($payload['id'] ?? 0);
+        $taskId     = (int) ($payload['id']           ?? 0);
         $toColumnId = (int) ($payload['to_column_id'] ?? 0);
-        $toPosition = (int) ($payload['to_position'] ?? 1);
+        $toPosition = (int) ($payload['to_position']  ?? 1);
 
         if ($taskId === 0 || $toColumnId === 0) {
             return $this->validationError(['id' => ['obrigatório'], 'to_column_id' => ['obrigatório']]);
+        }
+
+        // Double guard (S08)
+        if ($this->taskRepo instanceof \App\Repositories\PdoTaskRepository
+            && $this->projectRepo !== null
+            && $this->policy !== null
+        ) {
+            $companyId = (int) ($this->session->get('company_id') ?? 0);
+            $projectId = $this->taskRepo->resolveProjectId($taskId);
+
+            if ($projectId === null || !$this->projectRepo->belongsToCompany($projectId, $companyId)) {
+                return $this->apiError(404, 'not_found', 'Tarefa não encontrada.', []);
+            }
+
+            if (!$this->policy->canWrite($projectId)) {
+                return $this->apiError(403, 'forbidden', 'Requer papel editor ou superior.', []);
+            }
         }
 
         $userId = (int) $this->session->get('user_id');
@@ -168,7 +221,7 @@ final class TaskController
     {
         return HttpResponse::json([
             'error' => [
-                'code' => $code,
+                'code'    => $code,
                 'message' => $message,
                 'details' => $details
             ]

@@ -7,16 +7,20 @@ namespace App\Controllers;
 use App\DTO\BoardDTO;
 use App\Helpers\HttpRequest;
 use App\Helpers\HttpResponse;
-use App\Services\SessionStore;
-use App\Services\Board\CreateBoardService;
+use App\Policies\ProjectPolicy;
 use App\Repositories\BoardRepository;
+use App\Repositories\PdoProjectRepository;
+use App\Services\Board\CreateBoardService;
+use App\Services\SessionStore;
 
 final class BoardController
 {
     public function __construct(
         private readonly CreateBoardService $createBoardService,
         private readonly BoardRepository $boardRepository,
-        private readonly SessionStore $session
+        private readonly SessionStore $session,
+        private readonly ?PdoProjectRepository $projectRepo = null,
+        private readonly ?ProjectPolicy $policy = null
     ) {
     }
 
@@ -36,8 +40,25 @@ final class BoardController
             return $this->validationError(['name' => ['obrigatório'], 'project_id' => ['obrigatório']]);
         }
 
+        $projectId = (int) $payload['project_id'];
+
+        // Double guard (S08)
+        if ($this->projectRepo !== null && $this->policy !== null) {
+            $companyId = (int) ($this->session->get('company_id') ?? 0);
+
+            // Step 1: tenant isolation
+            if (!$this->projectRepo->belongsToCompany($projectId, $companyId)) {
+                return $this->apiError(404, 'not_found', 'Projeto não encontrado.', []);
+            }
+
+            // Step 2: role check
+            if (!$this->policy->canManageBoard($projectId)) {
+                return $this->apiError(403, 'forbidden', 'Requer papel manager ou superior.', []);
+            }
+        }
+
         $dto = new BoardDTO(
-            projectId: (int) $payload['project_id'],
+            projectId: $projectId,
             name: (string) $payload['name'],
             createdBy: (int) $userId
         );

@@ -71,4 +71,13 @@ final class PdoBoardRepository implements BoardRepository
         $stmt = $this->pdo->prepare('DELETE FROM boards WHERE id = ?');
         return $stmt->execute([$id]);
     }
+
+    /** Returns the project_id for a board, or null if the board doesn't exist. */
+    public function resolveProjectId(int $boardId): ?int
+    {
+        $stmt = $this->pdo->prepare('SELECT project_id FROM boards WHERE id = ? LIMIT 1');
+        $stmt->execute([$boardId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (int) $row['project_id'] : null;
+    }
 }

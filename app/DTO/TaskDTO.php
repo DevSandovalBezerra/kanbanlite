@@ -23,6 +23,7 @@ final readonly class TaskDTO
         public ?DateTimeInterface $createdAt = null,
         public ?DateTimeInterface $updatedAt = null,
         public array $labels = [],
+        public ?string $assigneeName = null,
     ) {
     }
 
@@ -43,6 +44,7 @@ final readonly class TaskDTO
             createdAt: isset($data['created_at']) ? new \DateTimeImmutable($data['created_at']) : null,
             updatedAt: isset($data['updated_at']) ? new \DateTimeImmutable($data['updated_at']) : null,
             labels: $data['labels'] ?? [],
+            assigneeName: isset($data['assignee_name']) ? (string) $data['assignee_name'] : null,
         );
     }
 
@@ -61,8 +63,12 @@ final readonly class TaskDTO
             'position'     => $this->position,
             'labels'       => $this->labels,
             'created_by'   => $this->createdBy,
-            'created_at'   => $this->createdAt?->format('Y-m-d H:i:s'),
-            'updated_at'   => $this->updatedAt?->format('Y-m-d H:i:s'),
+            'created_at'    => $this->createdAt?->format('Y-m-d H:i:s'),
+            'updated_at'    => $this->updatedAt?->format('Y-m-d H:i:s'),
+            // null when unassigned; "Usuário removido" when assigned_to points to a deleted user (S10)
+            'assignee_name' => $this->assignedTo !== null
+                ? ($this->assigneeName ?? 'Usuário removido')
+                : null,
         ];
     }
 }

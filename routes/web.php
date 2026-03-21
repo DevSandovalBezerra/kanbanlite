@@ -49,6 +49,9 @@ return static function (Router $router, \PDO $pdo): void {
             $firstBoardId = (int) ($stmt->fetchColumn() ?: 0);
         }
 
+        // user_is_admin is for UI/navigation only — actions always revalidate against DB
+        $userIsAdmin = (bool) $session->get('user_is_admin');
+
         return [
             'app_url'        => $scriptName,
             'base_path'      => $baseDir,
@@ -57,6 +60,7 @@ return static function (Router $router, \PDO $pdo): void {
             'user_id'        => $userId,
             'company_id'     => $companyId,
             'first_board_id' => $firstBoardId,
+            'user_is_admin'  => $userIsAdmin,
         ];
     };
 
@@ -279,6 +283,66 @@ return static function (Router $router, \PDO $pdo): void {
         $session->destroy();
         $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
         return HttpResponse::redirect($scriptName . '/login');
+    });
+
+    $router->add('GET', '/projects/members', static function (HttpRequest $request) use ($pdo, $ensureAuth, $sharedData, $session): HttpResponse {
+        if ($res = $ensureAuth()) return $res;
+
+        $projectId = (int) ($request->query()['id'] ?? 0);
+        if ($projectId === 0) {
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+            return HttpResponse::redirect($scriptName . '/projects');
+        }
+
+        $shared    = $sharedData();
+        $companyId = $shared['company_id'];
+        $userId    = $shared['user_id'];
+
+        // Tenant check
+        $repo = new \App\Repositories\PdoProjectRepository($pdo);
+        if (!$repo->belongsToCompany($projectId, $companyId)) {
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+            return HttpResponse::redirect($scriptName . '/projects');
+        }
+
+        // Must be a member
+        $memberRepo = new \App\Repositories\PdoProjectMemberRepository($pdo);
+        $role       = $memberRepo->getRoleInProject($projectId, $userId);
+        if ($role === null) {
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+            return HttpResponse::redirect($scriptName . '/projects');
+        }
+
+        $stmtProj = $pdo->prepare('SELECT name FROM projects WHERE id = ? LIMIT 1');
+        $stmtProj->execute([$projectId]);
+        $projectName = (string) ($stmtProj->fetchColumn() ?: 'Projeto');
+
+        return \App\Helpers\View::render('pages.project-members', array_merge($shared, [
+            'title'        => 'Membros — ' . $projectName . ' - KanbanLite',
+            'project_id'   => $projectId,
+            'project_name' => $projectName,
+        ]));
+    });
+
+    $router->add('GET', '/admin/users', static function (HttpRequest $request) use ($pdo, $ensureAuth, $sharedData): HttpResponse {
+        if ($res = $ensureAuth()) return $res;
+
+        $shared = $sharedData();
+        $userId = $shared['user_id'];
+
+        // Validate admin directly against DB (never trust session)
+        $stmt = $pdo->prepare("SELECT is_admin FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$row || !(bool) $row['is_admin']) {
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+            return HttpResponse::redirect($scriptName . '/');
+        }
+
+        return \App\Helpers\View::render('pages.admin-users', array_merge($shared, [
+            'title' => 'Gerenciar Usuários - KanbanLite',
+        ]));
     });
 
     $router->add('GET', '/health', static function (HttpRequest $request): HttpResponse {

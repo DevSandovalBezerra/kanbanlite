@@ -73,6 +73,24 @@ final class PdoColumnRepository implements ColumnRepository
         return $stmt->execute([$id]);
     }
 
+    /**
+     * Resolves the project_id for a column by walking column → board → project.
+     * Returns null if the column doesn't exist.
+     */
+    public function resolveProjectId(int $columnId): ?int
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT b.project_id
+             FROM columns c
+             JOIN boards b ON b.id = c.board_id
+             WHERE c.id = ?
+             LIMIT 1'
+        );
+        $stmt->execute([$columnId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (int) $row['project_id'] : null;
+    }
+
     public function updatePositions(array $orderedIds): bool
     {
         $this->pdo->beginTransaction();

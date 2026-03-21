@@ -7,14 +7,22 @@ namespace App\Controllers;
 use App\DTO\ColumnDTO;
 use App\Helpers\HttpRequest;
 use App\Helpers\HttpResponse;
-use App\Services\Column\CreateColumnService;
+use App\Policies\ProjectPolicy;
 use App\Repositories\ColumnRepository;
+use App\Repositories\PdoBoardRepository;
+use App\Repositories\PdoProjectRepository;
+use App\Services\Column\CreateColumnService;
+use App\Services\SessionStore;
 
 final class ColumnController
 {
     public function __construct(
         private readonly CreateColumnService $createColumnService,
-        private readonly ColumnRepository $columnRepository
+        private readonly ColumnRepository $columnRepository,
+        private readonly ?SessionStore $session = null,
+        private readonly ?PdoBoardRepository $boardRepo = null,
+        private readonly ?PdoProjectRepository $projectRepo = null,
+        private readonly ?ProjectPolicy $policy = null
     ) {
     }
 
@@ -25,8 +33,26 @@ final class ColumnController
             return HttpResponse::json(['error' => 'board_id e name são obrigatórios'], 422);
         }
 
+        $boardId = (int) $payload['board_id'];
+
+        // Double guard (S08)
+        if ($this->boardRepo !== null && $this->projectRepo !== null && $this->policy !== null && $this->session !== null) {
+            $companyId = (int) ($this->session->get('company_id') ?? 0);
+            $projectId = $this->boardRepo->resolveProjectId($boardId);
+
+            // Step 1: tenant isolation
+            if ($projectId === null || !$this->projectRepo->belongsToCompany($projectId, $companyId)) {
+                return HttpResponse::json(['error' => ['code' => 'not_found', 'message' => 'Board não encontrado.']], 404);
+            }
+
+            // Step 2: role check
+            if (!$this->policy->canManageBoard($projectId)) {
+                return HttpResponse::json(['error' => ['code' => 'forbidden', 'message' => 'Requer papel manager ou superior.']], 403);
+            }
+        }
+
         $dto = new ColumnDTO(
-            boardId: (int) $payload['board_id'],
+            boardId: $boardId,
             name: (string) $payload['name'],
             position: (int) ($payload['position'] ?? 1)
         );
@@ -40,6 +66,27 @@ final class ColumnController
         $payload = $this->decodeJsonBody($request);
         if (empty($payload['ordered_ids'])) {
             return HttpResponse::json(['error' => 'ordered_ids é obrigatório'], 422);
+        }
+
+        // Double guard: resolve project from first column id
+        if ($this->columnRepository instanceof \App\Repositories\PdoColumnRepository
+            && $this->projectRepo !== null
+            && $this->policy !== null
+            && $this->session !== null
+        ) {
+            $firstColumnId = (int) ($payload['ordered_ids'][0] ?? 0);
+            if ($firstColumnId > 0) {
+                $companyId = (int) ($this->session->get('company_id') ?? 0);
+                $projectId = $this->columnRepository->resolveProjectId($firstColumnId);
+
+                if ($projectId === null || !$this->projectRepo->belongsToCompany($projectId, $companyId)) {
+                    return HttpResponse::json(['error' => ['code' => 'not_found', 'message' => 'Coluna não encontrada.']], 404);
+                }
+
+                if (!$this->policy->canManageBoard($projectId)) {
+                    return HttpResponse::json(['error' => ['code' => 'forbidden', 'message' => 'Requer papel manager ou superior.']], 403);
+                }
+            }
         }
 
         $result = $this->columnRepository->updatePositions($payload['ordered_ids']);

@@ -22,6 +22,7 @@ SELECT
   u.email,
   u.password,
   u.status,
+  u.is_admin,
   c.status AS company_status
 FROM users u
 JOIN companies c ON c.id = u.company_id
@@ -41,7 +42,8 @@ SQL;
                 (int) $row['company_id'],
                 (string) $row['email'],
                 (string) $row['password'],
-                (string) $row['status']
+                (string) $row['status'],
+                (bool) ($row['is_admin'] ?? false),
             );
         }
 

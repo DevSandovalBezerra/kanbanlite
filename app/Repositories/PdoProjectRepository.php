@@ -65,6 +65,15 @@ final class PdoProjectRepository implements ProjectRepository
         ]);
     }
 
+    public function belongsToCompany(int $projectId, int $companyId): bool
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT 1 FROM projects WHERE id = ? AND company_id = ? LIMIT 1"
+        );
+        $stmt->execute([$projectId, $companyId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
     public function delete(int $id): bool
     {
         // First delete dependent boards

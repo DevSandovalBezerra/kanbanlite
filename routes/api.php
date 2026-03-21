@@ -6,6 +6,7 @@ use App\Controllers\AuthController;
 use App\Helpers\HttpRequest;
 use App\Helpers\HttpResponse;
 use App\Helpers\Router;
+use App\Middleware\AdminMiddleware;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\CsrfMiddleware;
 use App\Middleware\RateLimitMiddleware;
@@ -39,17 +40,22 @@ return static function (Router $router, \PDO $pdo): void {
     $attachLabelService   = new App\Services\Label\AttachLabelService($labelRepo);
     $detachLabelService   = new App\Services\Label\DetachLabelService($labelRepo);
 
+    // Shared policy dependencies (instantiated once, reused across controllers)
+    $sharedProjectRepo    = new App\Repositories\PdoProjectRepository($pdo);
+    $sharedMemberRepo     = new App\Repositories\PdoProjectMemberRepository($pdo);
+    $sharedPolicy         = new App\Policies\ProjectPolicy($sharedMemberRepo, $session);
+    $sharedColumnRepo     = new App\Repositories\PdoColumnRepository($pdo);
+
     // Controllers
-    $boardController   = new App\Controllers\BoardController($createBoardService, $boardRepo, $session);
-    $columnController  = new App\Controllers\ColumnController($createColumnService, $columnRepo);
-    $taskController    = new App\Controllers\TaskController($createTaskService, $moveTaskService, $taskRepo, $session);
+    $boardController   = new App\Controllers\BoardController($createBoardService, $boardRepo, $session, $sharedProjectRepo, $sharedPolicy);
+    $columnController  = new App\Controllers\ColumnController($createColumnService, $sharedColumnRepo, $session, new App\Repositories\PdoBoardRepository($pdo), $sharedProjectRepo, $sharedPolicy);
+    $taskController    = new App\Controllers\TaskController($createTaskService, $moveTaskService, $taskRepo, $session, $sharedColumnRepo, $sharedProjectRepo, $sharedPolicy);
     $commentController = new App\Controllers\CommentController($commentRepo, $createCommentService, $deleteCommentService, $session);
     $labelController   = new App\Controllers\LabelController($labelRepo, $createLabelService, $attachLabelService, $detachLabelService, $session);
 
 
-    $projectRepo = new App\Repositories\PdoProjectRepository($pdo);
-    $createProjectService = new App\Services\Project\CreateProjectService($projectRepo);
-    $projectController = new App\Controllers\ProjectController($projectRepo, $createProjectService, $session);
+    $createProjectService = new App\Services\Project\CreateProjectService($sharedProjectRepo);
+    $projectController    = new App\Controllers\ProjectController($sharedProjectRepo, $createProjectService, $session, $sharedMemberRepo);
 
 
     $router->addMiddleware(new AuthMiddleware($session, (int) ($sessionConfig['idle_timeout_seconds'] ?? 1800)));
@@ -120,6 +126,22 @@ return static function (Router $router, \PDO $pdo): void {
     $router->add('POST', '/api/projects/create', $wrap($projectController, 'create'));
     $router->add('POST', '/api/projects/update', $wrap($projectController, 'update'));
     $router->add('POST', '/api/projects/delete', $wrap($projectController, 'delete'));
+
+    // Project Member Routes
+    $memberController = new App\Controllers\ProjectMemberController(
+        $sharedMemberRepo,
+        $sharedProjectRepo,
+        new App\Services\ProjectMember\AddMemberService($sharedMemberRepo, $pdo),
+        new App\Services\ProjectMember\UpdateMemberRoleService($sharedMemberRepo),
+        new App\Services\ProjectMember\RemoveMemberService($sharedMemberRepo),
+        new App\Validators\InviteMemberValidator(),
+        $sharedPolicy,
+        $session
+    );
+    $router->add('GET',    '/api/project-members', $wrap($memberController, 'index'));
+    $router->add('POST',   '/api/project-members', $wrap($memberController, 'add'));
+    $router->add('PATCH',  '/api/project-members', $wrap($memberController, 'updateRole'));
+    $router->add('DELETE', '/api/project-members', $wrap($memberController, 'remove'));
 
     // Attachment Routes
     $uploadBasePath      = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads';
@@ -232,6 +254,32 @@ return static function (Router $router, \PDO $pdo): void {
         $stmt->execute([$companyId]);
         return HttpResponse::json($stmt->fetchAll(\PDO::FETCH_ASSOC));
     });
+
+    // Admin — User Management (AdminMiddleware revalidates is_admin against DB)
+    $adminMiddleware  = new AdminMiddleware($session, $pdo);
+    $userController   = new App\Controllers\UserController(
+        $pdo,
+        new App\Services\User\CreateUserService($pdo),
+        new App\Services\User\UpdateUserService($pdo),
+        new App\Services\User\ToggleUserStatusService($pdo),
+        new App\Services\User\ResetPasswordService($pdo),
+        new App\Validators\CreateUserValidator(),
+        new App\Validators\UpdateUserValidator(),
+        $session
+    );
+
+    $adminWrap = static function (object $ctrl, string $method) use ($adminMiddleware): callable {
+        return static function (HttpRequest $request) use ($ctrl, $method, $adminMiddleware): HttpResponse {
+            return $adminMiddleware($request, fn ($r) => $ctrl->$method($r));
+        };
+    };
+
+    $router->add('GET',    '/api/admin/users',                $adminWrap($userController, 'index'));
+    $router->add('POST',   '/api/admin/users',                $adminWrap($userController, 'create'));
+    $router->add('PATCH',  '/api/admin/users',                $adminWrap($userController, 'update'));
+    $router->add('POST',   '/api/admin/users/toggle-status',  $adminWrap($userController, 'toggleStatus'));
+    $router->add('POST',   '/api/admin/users/reset-password', $adminWrap($userController, 'resetPassword'));
+    $router->add('DELETE', '/api/admin/users',                $adminWrap($userController, 'delete'));
 
     // Global Search
     $router->add('GET', '/api/search', static function (HttpRequest $request) use ($pdo): HttpResponse {

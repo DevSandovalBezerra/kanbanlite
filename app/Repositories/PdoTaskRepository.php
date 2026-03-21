@@ -54,9 +54,34 @@ final class PdoTaskRepository implements TaskRepository
         return TaskDTO::fromArray($row);
     }
 
+    /**
+     * Resolves the project_id for a task by walking task → column → board → project.
+     * Returns null if the task doesn't exist.
+     */
+    public function resolveProjectId(int $taskId): ?int
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT b.project_id
+             FROM tasks t
+             JOIN columns c ON c.id = t.column_id
+             JOIN boards  b ON b.id = c.board_id
+             WHERE t.id = ?
+             LIMIT 1'
+        );
+        $stmt->execute([$taskId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (int) $row['project_id'] : null;
+    }
+
     public function findByColumnId(int $columnId): array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM tasks WHERE column_id = ? ORDER BY position ASC');
+        $stmt = $this->pdo->prepare(
+            "SELECT t.*, u.name AS assignee_name
+             FROM tasks t
+             LEFT JOIN users u ON u.id = t.assigned_to AND u.status != 'deleted'
+             WHERE t.column_id = ?
+             ORDER BY t.position ASC"
+        );
         $stmt->execute([$columnId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
