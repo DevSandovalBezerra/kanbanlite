@@ -6,6 +6,28 @@ $_navAvatar  = $user_avatar ?? '';
 $_navIsAdmin = $user_is_admin ?? false;
 $_navAppUrl  = $app_url ?? '';
 
+$_navWebRoot = preg_replace('~/index\.php$~', '', $_navAppUrl);
+if ($_navWebRoot === null) $_navWebRoot = '';
+if ($_navWebRoot !== '' && !str_ends_with($_navWebRoot, '/')) $_navWebRoot .= '/';
+
+$_navAvatarUrl = '';
+if (is_string($_navAvatar) && trim($_navAvatar) !== '') {
+    $a = trim($_navAvatar);
+    if (preg_match('~^https?://~i', $a)) {
+        $_navAvatarUrl = $a;
+    } elseif (str_starts_with($a, '/uploads/')) {
+        $_navAvatarUrl = rtrim($_navWebRoot, '/') . $a;
+    } elseif (str_starts_with($a, 'uploads/')) {
+        $_navAvatarUrl = $_navWebRoot . $a;
+    } elseif (!str_contains($a, '/')) {
+        $_navAvatarUrl = $_navWebRoot . 'uploads/avatars/' . basename($a);
+    } elseif (str_starts_with($a, '/')) {
+        $_navAvatarUrl = $a;
+    } else {
+        $_navAvatarUrl = $_navWebRoot . $a;
+    }
+}
+
 $_nameParts   = array_filter(explode(' ', $_navName));
 $_navInitials = '';
 if (count($_nameParts) >= 2) {
@@ -64,9 +86,9 @@ if (count($_nameParts) >= 2) {
                     </span>
                 </div>
                 <div class="w-10 h-10 border-2 border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex-shrink-0">
-                    <?php if ($_navAvatar !== ''): ?>
+                    <?php if ($_navAvatarUrl !== ''): ?>
                         <img id="nav-avatar-img"
-                             src="<?php echo htmlspecialchars($_navAvatar); ?>"
+                             src="<?php echo htmlspecialchars($_navAvatarUrl); ?>"
                              alt="Avatar"
                              class="w-full h-full object-cover">
                     <?php else: ?>

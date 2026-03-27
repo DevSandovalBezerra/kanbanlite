@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(vendor/bin/phpunit --testsuite unit)",
+      "Bash(vendor/bin/phpunit)",
+      "Bash(find c:/wamp64/www/kanban -name *.md -newer c:/wamp64/www/kanban/README.md)",
+      "Bash(cat '/c/wamp64/www/movamazon/php_errors hoje\\).log')",
+      "Bash(ls -la /c/wamp64/www/kanban/*.md /c/wamp64/www/kanban/*.txt /c/wamp64/www/kanban/README*)",
+      "Bash(\"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql\" -u root brunor90_kanban -e \":*)",
+      "Bash(\"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql\" -u root brunor90_kanban -e \"SELECT id, name, email, status, is_admin FROM users WHERE email = ''regular@test.com'';\")",
+      "Bash(grep -r \"assigned_to\\\\|priority\\\\|deadline\\\\|story_points\" /c/wamp64/www/kanban/database/migrations/mysql/*.sql)",
+      "Bash(git -C \"c:/wamp64/www/kanban\" add docs/UPDATE-21-03-2026.MD public/assets/js/kanban.js routes/api.php routes/web.php templates/default/layouts/base.html.php templates/default/pages/kanban.php templates/default/pages/project-members.php templates/default/partials/navbar.php app/Controllers/ProfileController.php database/migrations/mysql/010_users_avatar.sql public/uploads/)",
+      "Bash(git -C:*)"
+    ]
+  }
+}

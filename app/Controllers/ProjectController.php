@@ -24,7 +24,11 @@ final class ProjectController
     public function index(HttpRequest $request): HttpResponse
     {
         $companyId = (int) ($this->session?->get('company_id') ?? 0);
-        $projects  = $companyId > 0 ? $this->repository->findByCompanyId($companyId) : [];
+        $userId    = (int) ($this->session?->get('user_id') ?? 0);
+
+        $projects = ($companyId > 0 && $userId > 0)
+            ? $this->repository->findByCompanyIdAndUserId($companyId, $userId)
+            : [];
 
         $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
         $baseDir = str_replace('\\', '/', dirname($scriptName));
@@ -85,6 +89,21 @@ final class ProjectController
             return HttpResponse::json(['ok' => false, 'error' => 'Projeto não encontrado'], 404);
         }
 
+        $companyId = (int) ($this->session?->get('company_id') ?? 0);
+        $userId    = (int) ($this->session?->get('user_id') ?? 0);
+        if ($companyId === 0 || $userId === 0) {
+            return HttpResponse::json(['ok' => false, 'error' => 'Não autenticado'], 401);
+        }
+
+        if (!$this->repository->belongsToCompany($id, $companyId)) {
+            return HttpResponse::json(['ok' => false, 'error' => 'Projeto não encontrado'], 404);
+        }
+
+        $role = $this->memberRepo?->getRoleInProject($id, $userId);
+        if ($role !== 'owner') {
+            return HttpResponse::json(['ok' => false, 'error' => 'Sem permissão'], 403);
+        }
+
         $project->name = $data['name'] ?? $project->name;
         $project->description = $data['description'] ?? $project->description;
 
@@ -100,6 +119,21 @@ final class ProjectController
     {
         $id = (int) $request->query()['id'];
         try {
+            $companyId = (int) ($this->session?->get('company_id') ?? 0);
+            $userId    = (int) ($this->session?->get('user_id') ?? 0);
+            if ($companyId === 0 || $userId === 0) {
+                return HttpResponse::json(['ok' => false, 'error' => 'Não autenticado'], 401);
+            }
+
+            if (!$this->repository->belongsToCompany($id, $companyId)) {
+                return HttpResponse::json(['ok' => false, 'error' => 'Projeto não encontrado'], 404);
+            }
+
+            $role = $this->memberRepo?->getRoleInProject($id, $userId);
+            if ($role !== 'owner') {
+                return HttpResponse::json(['ok' => false, 'error' => 'Sem permissão'], 403);
+            }
+
             $this->repository->delete($id);
             return HttpResponse::json(['ok' => true], 200);
         } catch (\Exception $e) {

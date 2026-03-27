@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Tempo de geração: 20/03/2026 às 02:02
+-- Tempo de geração: 21/03/2026 às 20:13
 -- Versão do servidor: 8.4.7
 -- Versão do PHP: 8.3.28
 
@@ -24,6 +24,31 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Estrutura para tabela `admin_audit_log`
+--
+
+DROP TABLE IF EXISTS `admin_audit_log`;
+CREATE TABLE IF NOT EXISTS `admin_audit_log` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `actor_id` bigint UNSIGNED NOT NULL,
+  `action` varchar(50) NOT NULL,
+  `target_user_id` bigint UNSIGNED DEFAULT NULL,
+  `meta` json DEFAULT NULL,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_audit_actor` (`actor_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Despejando dados para a tabela `admin_audit_log`
+--
+
+INSERT INTO `admin_audit_log` (`id`, `actor_id`, `action`, `target_user_id`, `meta`, `created_at`) VALUES
+(1, 1, 'user_updated', 2, '{\"after\": {\"name\": \"Auditado\"}, \"before\": {\"name\": \"Regular User\", \"email\": \"regular@test.com\", \"is_admin\": 0}}', '2026-03-21 14:14:26');
+
+-- --------------------------------------------------------
+
+--
 -- Estrutura para tabela `boards`
 --
 
@@ -38,16 +63,7 @@ CREATE TABLE IF NOT EXISTS `boards` (
   PRIMARY KEY (`id`),
   KEY `boards_project_id_idx` (`project_id`),
   KEY `boards_created_by_idx` (`created_by`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Despejando dados para a tabela `boards`
---
-
-INSERT INTO `boards` (`id`, `project_id`, `name`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Quadro de Desenvolvimento', 1, '2026-03-19 00:01:39', '2026-03-19 00:01:39'),
-(2, 1, 'Design & UX', 1, '2026-03-19 00:01:39', '2026-03-19 00:01:39'),
-(3, 2, 'Operações Mova', 2, '2026-03-19 01:11:45', '2026-03-19 01:11:45');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -67,21 +83,7 @@ CREATE TABLE IF NOT EXISTS `columns` (
   UNIQUE KEY `columns_board_position_unique` (`board_id`,`position`),
   UNIQUE KEY `columns_board_name_unique` (`board_id`,`name`),
   KEY `columns_board_id_idx` (`board_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Despejando dados para a tabela `columns`
---
-
-INSERT INTO `columns` (`id`, `board_id`, `name`, `position`, `created_at`, `updated_at`) VALUES
-(1, 1, 'A Fazer', 1, '2026-03-19 00:01:39', '2026-03-19 00:01:39'),
-(2, 1, 'Em Progresso', 2, '2026-03-19 00:01:39', '2026-03-19 00:01:39'),
-(3, 1, 'Revisão', 3, '2026-03-19 00:01:39', '2026-03-19 00:01:39'),
-(4, 1, 'Concluído', 4, '2026-03-19 00:01:39', '2026-03-19 00:01:39'),
-(5, 3, 'A Fazer', 1, '2026-03-19 01:11:45', '2026-03-19 01:11:45'),
-(6, 3, 'Em Progresso', 2, '2026-03-19 01:11:45', '2026-03-19 01:11:45'),
-(7, 3, 'Revisão', 3, '2026-03-19 01:11:45', '2026-03-19 01:11:45'),
-(8, 3, 'Concluído', 4, '2026-03-19 01:11:45', '2026-03-19 01:11:45');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -97,15 +99,14 @@ CREATE TABLE IF NOT EXISTS `companies` (
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Despejando dados para a tabela `companies`
 --
 
 INSERT INTO `companies` (`id`, `name`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'Software Solutions', 'active', '2026-03-19 00:01:39', '2026-03-19 00:01:39'),
-(2, 'Mova Amazon', 'active', '0000-00-00 00:00:00', '0000-00-00 00:00:00');
+(1, 'Test Corp', 'active', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
 
 -- --------------------------------------------------------
 
@@ -129,6 +130,24 @@ CREATE TABLE IF NOT EXISTS `events` (
   KEY `events_company_id_idx` (`company_id`),
   KEY `events_project_id_idx` (`project_id`),
   KEY `events_created_by_idx` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `labels`
+--
+
+DROP TABLE IF EXISTS `labels`;
+CREATE TABLE IF NOT EXISTS `labels` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `company_id` bigint UNSIGNED NOT NULL,
+  `name` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `color` varchar(7) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#6200EE',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_company_label` (`company_id`,`name`),
+  KEY `labels_company_id_idx` (`company_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -182,15 +201,14 @@ CREATE TABLE IF NOT EXISTS `projects` (
   PRIMARY KEY (`id`),
   KEY `projects_company_id_idx` (`company_id`),
   KEY `projects_created_by_idx` (`created_by`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Despejando dados para a tabela `projects`
 --
 
 INSERT INTO `projects` (`id`, `company_id`, `name`, `description`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Projeto Principal', 'Desenvolvimento do Sistema Kanban', 1, '2026-03-19 00:01:39', '2026-03-19 00:01:39'),
-(2, 2, 'Mova Amazon - Projeto Alpha', 'Primeiro projeto para testes de fluxo', 2, '2026-03-19 01:11:45', '2026-03-19 01:11:45');
+(1, 1, 'Test Project', 'Desc', 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00');
 
 -- --------------------------------------------------------
 
@@ -200,12 +218,18 @@ INSERT INTO `projects` (`id`, `company_id`, `name`, `description`, `created_by`,
 
 DROP TABLE IF EXISTS `project_members`;
 CREATE TABLE IF NOT EXISTS `project_members` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
   `project_id` bigint UNSIGNED NOT NULL,
   `user_id` bigint UNSIGNED NOT NULL,
   `role_in_project` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `invited_by` bigint UNSIGNED DEFAULT NULL,
+  `accepted_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL,
-  PRIMARY KEY (`project_id`,`user_id`),
-  KEY `project_members_user_id_idx` (`user_id`)
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_project_member` (`project_id`,`user_id`),
+  KEY `project_members_user_id_idx` (`user_id`),
+  KEY `project_members_invited_by_fk` (`invited_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -250,6 +274,7 @@ CREATE TABLE IF NOT EXISTS `tasks` (
   `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `assigned_to` bigint UNSIGNED DEFAULT NULL,
   `priority` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `story_points` tinyint UNSIGNED DEFAULT NULL COMMENT 'Estimativa Fibonacci: 1, 2, 3, 5, 8, 13, 21',
   `deadline` datetime DEFAULT NULL,
   `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
   `position` int NOT NULL,
@@ -260,19 +285,63 @@ CREATE TABLE IF NOT EXISTS `tasks` (
   KEY `tasks_column_position_idx` (`column_id`,`position`),
   KEY `tasks_assigned_to_idx` (`assigned_to`),
   KEY `tasks_created_by_idx` (`created_by`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
 
 --
--- Despejando dados para a tabela `tasks`
+-- Estrutura para tabela `task_attachments`
 --
 
-INSERT INTO `tasks` (`id`, `column_id`, `title`, `description`, `assigned_to`, `priority`, `deadline`, `status`, `position`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 3, 'Definir Requisitos', 'Mapear todas as funcionalidades do MVP', NULL, 'high', NULL, 'todo', 2, 1, '2026-03-19 00:01:39', '2026-03-19 05:34:25'),
-(2, 3, 'Arquitetura de Dados', 'Modelar o banco de dados MySQL', NULL, 'medium', NULL, 'todo', 2, 1, '2026-03-19 00:01:39', '2026-03-19 05:34:21'),
-(3, 1, 'Implementar Auth', 'Sistema de login e registro', NULL, 'high', NULL, 'in_progress', 1, 1, '2026-03-19 00:01:39', '2026-03-19 05:34:30'),
-(4, 5, 'Análise de KPIs Mensais', 'Revisar os números de desempenho do último mês.', NULL, 'high', NULL, 'todo', 1, 2, '2026-03-19 01:11:45', '2026-03-19 01:11:45'),
-(5, 5, 'Revisão de Infraestrutura', 'Verificar estabilidade dos servidores em Manaus.', NULL, 'medium', NULL, 'todo', 2, 2, '2026-03-19 01:11:45', '2026-03-19 01:11:45'),
-(6, 5, 'Planejamento de Marketing', 'Definir próximas campanhas regionais.', NULL, 'low', NULL, 'todo', 3, 2, '2026-03-19 01:11:45', '2026-03-19 01:11:45');
+DROP TABLE IF EXISTS `task_attachments`;
+CREATE TABLE IF NOT EXISTS `task_attachments` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `task_id` bigint UNSIGNED NOT NULL,
+  `uploaded_by` bigint UNSIGNED NOT NULL,
+  `filename` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `filepath` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mime_type` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `size_bytes` int UNSIGNED NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `task_attachments_task_id_idx` (`task_id`),
+  KEY `task_attachments_user_fk` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `task_checklists`
+--
+
+DROP TABLE IF EXISTS `task_checklists`;
+CREATE TABLE IF NOT EXISTS `task_checklists` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `task_id` bigint UNSIGNED NOT NULL,
+  `title` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Checklist',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `task_checklists_task_id_idx` (`task_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `task_checklist_items`
+--
+
+DROP TABLE IF EXISTS `task_checklist_items`;
+CREATE TABLE IF NOT EXISTS `task_checklist_items` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `checklist_id` bigint UNSIGNED NOT NULL,
+  `body` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_done` tinyint(1) NOT NULL DEFAULT '0',
+  `position` smallint NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `task_checklist_items_checklist_id_idx` (`checklist_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -291,6 +360,21 @@ CREATE TABLE IF NOT EXISTS `task_comments` (
   KEY `task_comments_task_id_idx` (`task_id`),
   KEY `task_comments_user_id_idx` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `task_dependencies`
+--
+
+DROP TABLE IF EXISTS `task_dependencies`;
+CREATE TABLE IF NOT EXISTS `task_dependencies` (
+  `task_id` bigint UNSIGNED NOT NULL,
+  `depends_on_id` bigint UNSIGNED NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`task_id`,`depends_on_id`),
+  KEY `task_dep_blocker_fk` (`depends_on_id`)
+) ;
 
 -- --------------------------------------------------------
 
@@ -315,6 +399,20 @@ CREATE TABLE IF NOT EXISTS `task_history` (
 -- --------------------------------------------------------
 
 --
+-- Estrutura para tabela `task_labels`
+--
+
+DROP TABLE IF EXISTS `task_labels`;
+CREATE TABLE IF NOT EXISTS `task_labels` (
+  `task_id` bigint UNSIGNED NOT NULL,
+  `label_id` bigint UNSIGNED NOT NULL,
+  PRIMARY KEY (`task_id`,`label_id`),
+  KEY `task_labels_label_fk` (`label_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estrutura para tabela `users`
 --
 
@@ -326,6 +424,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `status` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_admin` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
@@ -337,9 +436,9 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- Despejando dados para a tabela `users`
 --
 
-INSERT INTO `users` (`id`, `company_id`, `name`, `email`, `password`, `status`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Administrador', 'admin@kanban.com', '$2y$12$kNIVYZtCOdO30nW4cJDeMehxW7L7CG0P95qusPXaqB6/6EMi8Jfqu', 'active', '2026-03-19 00:01:39', '2026-03-19 00:01:39'),
-(2, 2, 'Administrador', 'admin@movamazon.com.br', '$2y$12$CYl1ztfVfQW/7hKNoC5ubePPoMW8rTDnmhtllyqSHaAF0UnYD04ii', 'active', '0000-00-00 00:00:00', '0000-00-00 00:00:00');
+INSERT INTO `users` (`id`, `company_id`, `name`, `email`, `password`, `status`, `is_admin`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Sandoval', 'sandoval@sbsystems.com.br', '$2y$12$meaMI/dGE8G5LFaNmisKGeD9kE/Ux1LCgyCoFuz4W1D8fkz03W1ti', 'active', 1, '2026-01-01 00:00:00', '2026-03-21 11:07:43'),
+(2, 1, 'Auditado', 'regular@test.com', '$2y$12$B4bhpOf8Hx.SmItyBd0O9.v8..uqmNf94Cj0.sBJgVeZujy1NXza2', 'active', 0, '2026-01-01 00:00:00', '2026-03-21 14:14:26');
 
 -- --------------------------------------------------------
 
@@ -358,6 +457,12 @@ CREATE TABLE IF NOT EXISTS `user_roles` (
 --
 -- Restrições para tabelas despejadas
 --
+
+--
+-- Restrições para tabelas `admin_audit_log`
+--
+ALTER TABLE `admin_audit_log`
+  ADD CONSTRAINT `fk_audit_actor` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`);
 
 --
 -- Restrições para tabelas `boards`
@@ -381,6 +486,12 @@ ALTER TABLE `events`
   ADD CONSTRAINT `events_project_id_fk` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`);
 
 --
+-- Restrições para tabelas `labels`
+--
+ALTER TABLE `labels`
+  ADD CONSTRAINT `labels_company_id_fk` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON DELETE CASCADE;
+
+--
 -- Restrições para tabelas `messages`
 --
 ALTER TABLE `messages`
@@ -398,8 +509,9 @@ ALTER TABLE `projects`
 -- Restrições para tabelas `project_members`
 --
 ALTER TABLE `project_members`
-  ADD CONSTRAINT `project_members_project_id_fk` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`),
-  ADD CONSTRAINT `project_members_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+  ADD CONSTRAINT `pm_project_fk` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`),
+  ADD CONSTRAINT `pm_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `project_members_invited_by_fk` FOREIGN KEY (`invited_by`) REFERENCES `users` (`id`);
 
 --
 -- Restrições para tabelas `role_permissions`
@@ -417,6 +529,25 @@ ALTER TABLE `tasks`
   ADD CONSTRAINT `tasks_created_by_fk` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`);
 
 --
+-- Restrições para tabelas `task_attachments`
+--
+ALTER TABLE `task_attachments`
+  ADD CONSTRAINT `task_attachments_task_fk` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `task_attachments_user_fk` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`);
+
+--
+-- Restrições para tabelas `task_checklists`
+--
+ALTER TABLE `task_checklists`
+  ADD CONSTRAINT `task_checklists_task_fk` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE;
+
+--
+-- Restrições para tabelas `task_checklist_items`
+--
+ALTER TABLE `task_checklist_items`
+  ADD CONSTRAINT `task_checklist_items_checklist_fk` FOREIGN KEY (`checklist_id`) REFERENCES `task_checklists` (`id`) ON DELETE CASCADE;
+
+--
 -- Restrições para tabelas `task_comments`
 --
 ALTER TABLE `task_comments`
@@ -424,11 +555,25 @@ ALTER TABLE `task_comments`
   ADD CONSTRAINT `task_comments_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 
 --
+-- Restrições para tabelas `task_dependencies`
+--
+ALTER TABLE `task_dependencies`
+  ADD CONSTRAINT `task_dep_blocker_fk` FOREIGN KEY (`depends_on_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `task_dep_task_fk` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE;
+
+--
 -- Restrições para tabelas `task_history`
 --
 ALTER TABLE `task_history`
   ADD CONSTRAINT `task_history_task_id_fk` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`),
   ADD CONSTRAINT `task_history_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
+-- Restrições para tabelas `task_labels`
+--
+ALTER TABLE `task_labels`
+  ADD CONSTRAINT `task_labels_label_fk` FOREIGN KEY (`label_id`) REFERENCES `labels` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `task_labels_task_fk` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE;
 
 --
 -- Restrições para tabelas `users`

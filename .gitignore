@@ -1,3 +1,5 @@
 .phpunit.cache/
 vendor/
 storage/
+logs/
+.env

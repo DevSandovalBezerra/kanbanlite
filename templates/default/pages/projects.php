@@ -53,6 +53,9 @@
                     <a href="<?php echo $app_url ?? ''; ?>/projects/members?id=<?php echo $project->id; ?>" class="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors" title="Gerenciar membros">
                         <span class="material-symbols-outlined text-[16px]">group</span>
                     </a>
+                    <a href="<?php echo $app_url ?? ''; ?>/projects/secrets?id=<?php echo $project->id; ?>" class="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors" title="Secrets">
+                        <span class="material-symbols-outlined text-[16px]">key</span>
+                    </a>
                     <a href="<?php echo $app_url ?? ''; ?>/boards?id=<?php echo $project->id; ?>" class="flex items-center gap-2 font-bold text-xs text-indigo-600 hover:text-indigo-700 transition-colors group/link">
                        Ir para o Quadro
                        <span class="material-symbols-outlined text-[18px] group-hover/link:translate-x-1 transition-transform">arrow_forward</span>
@@ -113,6 +116,8 @@
 </div>
 
 <script>
+    const BASE = '<?php echo $app_url ?? ''; ?>';
+
     // ── Avatar helpers ───────────────────────────────────────────
     const AVATAR_COLORS = [
         ['#eef2ff','#6366f1'], ['#f0fdf4','#16a34a'], ['#fff7ed','#ea580c'],
@@ -132,17 +137,21 @@
 
     (async () => {
         try {
-            const appBase = '<?php echo $app_url ?? ''; ?>';
-            const res     = await fetch(appBase + '/api/users');
-            if (!res.ok) return;
-            const users = await res.json();
+            const els = Array.from(document.querySelectorAll('.js-project-members'));
+            await Promise.all(els.map(async (el) => {
+                const projectId = parseInt(el.dataset.projectId);
+                if (!projectId) return;
 
-            document.querySelectorAll('.js-project-members').forEach(el => {
+                const res = await fetch(`${BASE}/api/project-members?project_id=${projectId}`);
+                if (!res.ok) return;
+                const members = await res.json();
+                const users = members.map(m => ({ id: m.user_id, name: m.user_name || 'Usuário' }));
+
                 el.innerHTML = users.slice(0, 3).map((u, i) => avatarHtml(u, i)).join('');
                 if (users.length > 3) {
                     el.innerHTML += `<div class="w-7 h-7 rounded-full border-2 border-white bg-slate-100 text-slate-500 shadow-sm flex items-center justify-center text-[9px] font-bold">+${users.length - 3}</div>`;
                 }
-            });
+            }));
         } catch {}
     })();
 
@@ -157,6 +166,19 @@
 
     function closeProjectModal() {
         document.getElementById('project-modal').classList.add('hidden');
+    }
+
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.content || '';
+    }
+
+    async function readJsonResponse(response) {
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch {
+            return { ok: false, error: text?.slice(0, 200) || 'Resposta inválida do servidor.' };
+        }
     }
 
     async function editProject(id) {
@@ -174,17 +196,32 @@
     }
 
     async function deleteProject(id) {
-        if (!confirm('Deseja realmente excluir este projeto e todos os seus quadros?')) return;
+        const confirmResult = await Swal.fire({
+            title: 'Excluir projeto?',
+            text: 'Deseja realmente excluir este projeto e todos os seus quadros?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Excluir',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmResult.isConfirmed) return;
 
-        const apiUrl = '<?php echo $appUrl; ?>/api/projects/delete?id=' + id;
         try {
-            const response = await fetch(apiUrl, { method: 'POST' });
-            const result = await response.json();
-            if (result.ok) location.reload();
-            else alert('Erro: ' + result.error);
+            const response = await fetch(BASE + '/api/projects/delete?id=' + id, {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': getCsrfToken() }
+            });
+            const result = await readJsonResponse(response);
+            if (response.ok && result.ok) {
+                await Swal.fire({ title: 'Excluído', text: 'Projeto excluído com sucesso.', icon: 'success' });
+                location.reload();
+                return;
+            }
+
+            await Swal.fire({ title: 'Erro', text: result.error || 'Falha ao excluir projeto.', icon: 'error' });
         } catch (e) {
             console.error(e);
-            alert('Falha na comunicação com o servidor');
+            await Swal.fire({ title: 'Erro', text: 'Falha na comunicação com o servidor.', icon: 'error' });
         }
     }
 
@@ -195,20 +232,32 @@
         const description = document.getElementById('project-desc').value;
 
         const method = id ? 'update' : 'create';
-        const url = '<?php echo $appUrl; ?>/api/projects/' + method + (id ? '?id=' + id : '');
+        const url = BASE + '/api/projects/' + method + (id ? '?id=' + id : '');
 
         try {
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                },
                 body: JSON.stringify({ name, description })
             });
-            const result = await response.json();
-            if (result.ok) location.reload();
-            else alert('Erro: ' + result.error);
+            const result = await readJsonResponse(response);
+            if (response.ok && result.ok) {
+                await Swal.fire({
+                    title: 'Salvo',
+                    text: id ? 'Projeto atualizado com sucesso.' : 'Projeto criado com sucesso.',
+                    icon: 'success'
+                });
+                location.reload();
+                return;
+            }
+
+            await Swal.fire({ title: 'Erro', text: result.error || 'Falha ao salvar projeto.', icon: 'error' });
         } catch (e) {
             console.error(e);
-            alert('Falha na comunicação com o servidor');
+            await Swal.fire({ title: 'Erro', text: 'Falha na comunicação com o servidor.', icon: 'error' });
         }
     });
 </script>

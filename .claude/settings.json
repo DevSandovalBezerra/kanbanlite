@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs php:*)",
+      "Bash(php -l routes/api.php)",
+      "Bash(php -l routes/web.php)",
+      "Bash(./vendor/bin/phpunit --testsuite unit)",
+      "Bash(./vendor/bin/phpunit --testsuite integration)",
+      "Bash(./vendor/bin/phpunit)",
+      "Bash(git commit:*)",
+      "Bash(mysql -u root brunor90_kanban -e \"SELECT id, name, status FROM companies LIMIT 10;\")",
+      "Bash(\"/c/wamp64/bin/mysql/mysql9.1.0/bin/mysql\" -u root brunor90_kanban -e \"SELECT id, name, status FROM companies LIMIT 10;\")",
+      "Read(//c/wamp64/bin/mysql//**)",
+      "Bash(\"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql\" -u root brunor90_kanban -e \"SELECT id, name, status FROM companies LIMIT 10;\")",
+      "Bash(\"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql\" -u root brunor90_kanban -e \"SELECT id, name, email, status, is_admin FROM users;\")",
+      "Bash(\"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql\" -u root brunor90_kanban -e \"UPDATE users SET name=''Sandoval'', password=''$2y$12$g23oTdvwyx.yJz6OAd0YlurfqTEoEVsDBYr.DwxAHu6OqsuDvSG0S'', updated_at=NOW\\(\\) WHERE email=''sandoval@sbsystems.com.br'';\")",
+      "Bash(\"/c/wamp64/bin/mysql/mysql8.4.7/bin/mysql\" -u root brunor90_kanban -e \"SELECT id, name, email, status, is_admin FROM users WHERE email=''sandoval@sbsystems.com.br'';\")"
+    ]
+  }
+}

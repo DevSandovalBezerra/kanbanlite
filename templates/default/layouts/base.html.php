@@ -68,6 +68,28 @@
     $_pmAvatar  = $user_avatar ?? '';
     $_pmAppUrl  = $app_url     ?? '';
 
+    $_pmWebRoot = preg_replace('~/index\.php$~', '', $_pmAppUrl);
+    if ($_pmWebRoot === null) $_pmWebRoot = '';
+    if ($_pmWebRoot !== '' && !str_ends_with($_pmWebRoot, '/')) $_pmWebRoot .= '/';
+
+    $_pmAvatarUrl = '';
+    if (is_string($_pmAvatar) && trim($_pmAvatar) !== '') {
+        $a = trim($_pmAvatar);
+        if (preg_match('~^https?://~i', $a)) {
+            $_pmAvatarUrl = $a;
+        } elseif (str_starts_with($a, '/uploads/')) {
+            $_pmAvatarUrl = rtrim($_pmWebRoot, '/') . $a;
+        } elseif (str_starts_with($a, 'uploads/')) {
+            $_pmAvatarUrl = $_pmWebRoot . $a;
+        } elseif (!str_contains($a, '/')) {
+            $_pmAvatarUrl = $_pmWebRoot . 'uploads/avatars/' . basename($a);
+        } elseif (str_starts_with($a, '/')) {
+            $_pmAvatarUrl = $a;
+        } else {
+            $_pmAvatarUrl = $_pmWebRoot . $a;
+        }
+    }
+
     $_pmParts    = array_filter(explode(' ', $_pmName));
     $_pmInitials = '';
     if (count($_pmParts) >= 2) {
@@ -115,7 +137,7 @@
                              onclick="document.getElementById('avatar-input').click()">
                             <?php if ($_pmAvatar !== ''): ?>
                                 <img id="avatar-preview"
-                                     src="<?php echo htmlspecialchars($_pmAvatar); ?>"
+                                     src="<?php echo htmlspecialchars($_pmAvatarUrl); ?>"
                                      class="w-20 h-20 rounded-full object-cover border-4 border-indigo-100"/>
                                 <div id="avatar-initials-preview"
                                      class="hidden w-20 h-20 rounded-full bg-indigo-600 text-white text-2xl font-semibold flex items-center justify-center border-4 border-indigo-100">

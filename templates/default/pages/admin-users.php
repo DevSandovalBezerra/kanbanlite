@@ -295,6 +295,8 @@ async function deleteUser(id) {
 }
 
 function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    if (meta) return meta;
     return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrf_token='))?.split('=')?.[1] ?? '';
 }
 

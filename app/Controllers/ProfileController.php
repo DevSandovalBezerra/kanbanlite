@@ -201,7 +201,11 @@ final class ProfileController
             return $this->apiError(500, 'upload_error', 'Falha ao salvar o arquivo.', []);
         }
 
-        $relativePath = '/uploads/' . self::AVATAR_DIR . '/' . $filename;
+        $scriptName = (string) ($_SERVER['SCRIPT_NAME'] ?? '/index.php');
+        $baseDir    = str_replace('\\', '/', dirname($scriptName));
+        if ($baseDir === '/' || $baseDir === '.') $baseDir = '';
+
+        $relativePath = $baseDir . '/uploads/' . self::AVATAR_DIR . '/' . $filename;
 
         $this->pdo->prepare(
             'UPDATE users SET avatar = ?, updated_at = ? WHERE id = ?'

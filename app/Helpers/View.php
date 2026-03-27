@@ -18,11 +18,13 @@ final class View
         $templatePath = self::resolvePath($name);
         $layoutPath = self::resolvePath("layouts.{$layout}");
 
-        // Inject CSRF token if present
         $session = new \App\Services\PhpSessionStore();
-        if ($csrf = $session->get('csrf_token')) {
-            $data['csrf_token'] = $csrf;
+        $csrf = $session->get('csrf_token');
+        if (!is_string($csrf) || $csrf === '') {
+            $csrf = bin2hex(random_bytes(32));
+            $session->set('csrf_token', $csrf);
         }
+        $data['csrf_token'] = $csrf;
 
         extract($data);
 

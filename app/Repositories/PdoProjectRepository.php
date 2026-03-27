@@ -50,6 +50,21 @@ final class PdoProjectRepository implements ProjectRepository
         return array_map(fn(array $row) => ProjectDTO::fromArray($row), $rows);
     }
 
+    public function findByCompanyIdAndUserId(int $companyId, int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT DISTINCT p.*
+             FROM projects p
+             JOIN project_members pm ON pm.project_id = p.id
+             WHERE p.company_id = :company_id AND pm.user_id = :user_id
+             ORDER BY p.created_at DESC"
+        );
+        $stmt->execute(['company_id' => $companyId, 'user_id' => $userId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return array_map(fn(array $row) => ProjectDTO::fromArray($row), $rows);
+    }
+
     public function update(ProjectDTO $project): bool
     {
         $stmt = $this->pdo->prepare("
@@ -76,6 +91,9 @@ final class PdoProjectRepository implements ProjectRepository
 
     public function delete(int $id): bool
     {
+        $this->pdo->prepare("DELETE FROM project_secrets WHERE project_id = :id")->execute(['id' => $id]);
+        $this->pdo->prepare("DELETE FROM project_members WHERE project_id = :id")->execute(['id' => $id]);
+
         // First delete dependent boards
         $this->pdo->prepare("DELETE FROM boards WHERE project_id = :id")->execute(['id' => $id]);
         

@@ -80,6 +80,17 @@ final class BoardController
             return $this->apiError(404, 'not_found', 'Board não encontrado.', []);
         }
 
+        if ($this->projectRepo !== null && $this->policy !== null) {
+            $companyId = (int) ($this->session->get('company_id') ?? 0);
+            if (!$this->projectRepo->belongsToCompany($board->projectId, $companyId)) {
+                return $this->apiError(404, 'not_found', 'Board não encontrado.', []);
+            }
+
+            if (!$this->policy->canView($board->projectId)) {
+                return $this->apiError(403, 'forbidden', 'Sem acesso a este projeto.', []);
+            }
+        }
+
         return HttpResponse::json($board->toArray());
     }
 

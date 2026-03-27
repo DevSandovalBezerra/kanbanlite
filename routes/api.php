@@ -143,6 +143,19 @@ return static function (Router $router, \PDO $pdo): void {
     $router->add('PATCH',  '/api/project-members', $wrap($memberController, 'updateRole'));
     $router->add('DELETE', '/api/project-members', $wrap($memberController, 'remove'));
 
+    // Project Secrets Routes
+    $projectSecretRepo = new App\Repositories\PdoProjectSecretRepository($pdo);
+    $projectSecretController = new App\Controllers\ProjectSecretController(
+        $projectSecretRepo,
+        $sharedProjectRepo,
+        $sharedPolicy,
+        $session
+    );
+    $router->add('GET',    '/api/project-secrets', $wrap($projectSecretController, 'index'));
+    $router->add('POST',   '/api/project-secrets', $wrap($projectSecretController, 'create'));
+    $router->add('PATCH',  '/api/project-secrets', $wrap($projectSecretController, 'update'));
+    $router->add('DELETE', '/api/project-secrets', $wrap($projectSecretController, 'delete'));
+
     // Attachment Routes
     $uploadBasePath      = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads';
     $attachmentRepo      = new App\Repositories\PdoAttachmentRepository($pdo);
@@ -299,7 +312,6 @@ return static function (Router $router, \PDO $pdo): void {
         return HttpResponse::json(['results' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     });
 };
-
 
 
 

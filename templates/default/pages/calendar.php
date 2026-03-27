@@ -147,12 +147,27 @@
 </div>
 
 <script>
+    const BASE = '<?php echo $app_url ?? ''; ?>';
+
     function openEventModal() {
         document.getElementById('event-modal').classList.remove('hidden');
     }
 
     function closeEventModal() {
         document.getElementById('event-modal').classList.add('hidden');
+    }
+
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.content || '';
+    }
+
+    async function readJsonResponse(response) {
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch {
+            return { ok: false, error: text?.slice(0, 200) || 'Resposta inválida do servidor.' };
+        }
     }
 
     document.getElementById('event-form').addEventListener('submit', async (e) => {
@@ -162,20 +177,27 @@
         const end_time = document.getElementById('event-end').value;
         const description = document.getElementById('event-desc').value;
 
-        const url = '<?php echo $appUrl; ?>/api/events/create';
+        const url = BASE + '/api/events/create';
 
         try {
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                },
                 body: JSON.stringify({ title, start_time, end_time, description })
             });
-            const result = await response.json();
-            if (result.ok) location.reload();
-            else alert('Erro: ' + result.error);
+            const result = await readJsonResponse(response);
+            if (response.ok && result.ok) {
+                await Swal.fire({ title: 'Agendado', text: 'Evento criado com sucesso.', icon: 'success' });
+                location.reload();
+                return;
+            }
+            await Swal.fire({ title: 'Erro', text: result.error || 'Falha ao criar evento.', icon: 'error' });
         } catch (e) {
             console.error(e);
-            alert('Falha na comunicação com o servidor');
+            await Swal.fire({ title: 'Erro', text: 'Falha na comunicação com o servidor.', icon: 'error' });
         }
     });
 </script>

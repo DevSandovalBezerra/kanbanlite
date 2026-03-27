@@ -44,13 +44,15 @@ return static function (Router $router, \PDO $pdo): void {
 
         // Resolve first board for sidebar link
         $firstBoardId = 0;
-        if ($companyId > 0) {
+        if ($companyId > 0 && $userId > 0) {
             $stmt = $pdo->prepare(
                 'SELECT b.id FROM boards b
                  JOIN projects p ON p.id = b.project_id
-                 WHERE p.company_id = ? LIMIT 1'
+                 JOIN project_members pm ON pm.project_id = p.id
+                 WHERE p.company_id = ? AND pm.user_id = ?
+                 LIMIT 1'
             );
-            $stmt->execute([$companyId]);
+            $stmt->execute([$companyId, $userId]);
             $firstBoardId = (int) ($stmt->fetchColumn() ?: 0);
         }
 
@@ -77,8 +79,14 @@ return static function (Router $router, \PDO $pdo): void {
         $companyId = $shared['company_id'];
 
         // Boards
-        $stmt = $pdo->prepare('SELECT id FROM projects WHERE company_id = ? LIMIT 1');
-        $stmt->execute([$companyId]);
+        $stmt = $pdo->prepare(
+            'SELECT p.id
+             FROM projects p
+             JOIN project_members pm ON pm.project_id = p.id
+             WHERE p.company_id = ? AND pm.user_id = ?
+             LIMIT 1'
+        );
+        $stmt->execute([$companyId, (int) $shared['user_id']]);
         $projectId = (int) $stmt->fetchColumn();
         $boardRepo = new \App\Repositories\PdoBoardRepository($pdo);
         $boards    = $projectId > 0 ? $boardRepo->findByProjectId($projectId) : [];
@@ -89,9 +97,10 @@ return static function (Router $router, \PDO $pdo): void {
              JOIN columns c ON c.id = t.column_id
              JOIN boards b ON b.id = c.board_id
              JOIN projects p ON p.id = b.project_id
-             WHERE p.company_id = ? AND t.status != 'done'"
+             JOIN project_members pm ON pm.project_id = p.id
+             WHERE p.company_id = ? AND pm.user_id = ? AND t.status != 'done'"
         );
-        $stmtTasks->execute([$companyId]);
+        $stmtTasks->execute([$companyId, (int) $shared['user_id']]);
         $pendingTasks = (int) $stmtTasks->fetchColumn();
 
         $stmtTeam = $pdo->prepare('SELECT COUNT(*) FROM users WHERE company_id = ?');
@@ -103,9 +112,10 @@ return static function (Router $router, \PDO $pdo): void {
              JOIN columns c ON c.id = t.column_id
              JOIN boards b ON b.id = c.board_id
              JOIN projects p ON p.id = b.project_id
-             WHERE p.company_id = ?"
+             JOIN project_members pm ON pm.project_id = p.id
+             WHERE p.company_id = ? AND pm.user_id = ?"
         );
-        $stmtTotal->execute([$companyId]);
+        $stmtTotal->execute([$companyId, (int) $shared['user_id']]);
         $totalTasks = (int) $stmtTotal->fetchColumn();
 
         $stmtDone = $pdo->prepare(
@@ -113,9 +123,10 @@ return static function (Router $router, \PDO $pdo): void {
              JOIN columns c ON c.id = t.column_id
              JOIN boards b ON b.id = c.board_id
              JOIN projects p ON p.id = b.project_id
-             WHERE p.company_id = ? AND t.status = 'done'"
+             JOIN project_members pm ON pm.project_id = p.id
+             WHERE p.company_id = ? AND pm.user_id = ? AND t.status = 'done'"
         );
-        $stmtDone->execute([$companyId]);
+        $stmtDone->execute([$companyId, (int) $shared['user_id']]);
         $doneTasks  = (int) $stmtDone->fetchColumn();
         $donePct    = $totalTasks > 0 ? (int) round($doneTasks / $totalTasks * 100) : 0;
 
@@ -152,6 +163,12 @@ return static function (Router $router, \PDO $pdo): void {
                 return HttpResponse::text('Quadro não encontrado: ' . $boardId, 404);
             }
 
+            $stmtMember = $pdo->prepare('SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ? LIMIT 1');
+            $stmtMember->execute([$projectId, $userId]);
+            if (!(bool) $stmtMember->fetchColumn()) {
+                return HttpResponse::text('Quadro não encontrado: ' . $boardId, 404);
+            }
+
             $stmtBoard = $pdo->prepare('SELECT id FROM boards WHERE project_id = ? ORDER BY id ASC LIMIT 1');
             $stmtBoard->execute([$projectId]);
             $existingBoardId = (int) ($stmtBoard->fetchColumn() ?: 0);
@@ -177,6 +194,18 @@ return static function (Router $router, \PDO $pdo): void {
             }
 
             return HttpResponse::redirect($scriptName . '/boards?id=' . $newBoardId);
+        }
+
+        $stmtAccess = $pdo->prepare(
+            'SELECT 1
+             FROM projects p
+             JOIN project_members pm ON pm.project_id = p.id
+             WHERE p.id = ? AND p.company_id = ? AND pm.user_id = ?
+             LIMIT 1'
+        );
+        $stmtAccess->execute([$board->projectId, $companyId, $userId]);
+        if (!(bool) $stmtAccess->fetchColumn()) {
+            return HttpResponse::text('Quadro não encontrado: ' . $boardId, 404);
         }
 
         // Resolve project name
@@ -359,6 +388,43 @@ return static function (Router $router, \PDO $pdo): void {
 
         return \App\Helpers\View::render('pages.project-members', array_merge($shared, [
             'title'        => 'Membros — ' . $projectName . ' - KanbanLite',
+            'project_id'   => $projectId,
+            'project_name' => $projectName,
+        ]));
+    });
+
+    $router->add('GET', '/projects/secrets', static function (HttpRequest $request) use ($pdo, $ensureAuth, $sharedData): HttpResponse {
+        if ($res = $ensureAuth()) return $res;
+
+        $projectId = (int) ($request->query()['id'] ?? 0);
+        if ($projectId === 0) {
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+            return HttpResponse::redirect($scriptName . '/projects');
+        }
+
+        $shared    = $sharedData();
+        $companyId = $shared['company_id'];
+        $userId    = $shared['user_id'];
+
+        $repo = new \App\Repositories\PdoProjectRepository($pdo);
+        if (!$repo->belongsToCompany($projectId, $companyId)) {
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+            return HttpResponse::redirect($scriptName . '/projects');
+        }
+
+        $memberRepo = new \App\Repositories\PdoProjectMemberRepository($pdo);
+        $role       = $memberRepo->getRoleInProject($projectId, $userId);
+        if ($role === null) {
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+            return HttpResponse::redirect($scriptName . '/projects');
+        }
+
+        $stmtProj = $pdo->prepare('SELECT name FROM projects WHERE id = ? LIMIT 1');
+        $stmtProj->execute([$projectId]);
+        $projectName = (string) ($stmtProj->fetchColumn() ?: 'Projeto');
+
+        return \App\Helpers\View::render('pages.project-secrets', array_merge($shared, [
+            'title'        => 'Secrets — ' . $projectName . ' - KanbanLite',
             'project_id'   => $projectId,
             'project_name' => $projectName,
         ]));
