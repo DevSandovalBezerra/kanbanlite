@@ -57,4 +57,27 @@ final class PdoColumnRepositoryTest extends IntegrationTestCase
         self::assertSame(2, $c1->position);
         self::assertSame(1, $c2->position);
     }
+
+    public function testCanUpdateName(): void
+    {
+        $id = $this->repository->create(new ColumnDTO($this->boardId, 'To Do', 1));
+        $found = $this->repository->findById($id);
+        self::assertNotNull($found);
+
+        $dto = new ColumnDTO(
+            boardId: $found->boardId,
+            name: 'Backlog',
+            position: $found->position,
+            id: $found->id,
+            createdAt: $found->createdAt,
+            updatedAt: $found->updatedAt
+        );
+
+        $ok = $this->repository->update($dto);
+        self::assertTrue($ok);
+
+        $updated = $this->repository->findById($id);
+        self::assertNotNull($updated);
+        self::assertSame('Backlog', $updated->name);
+    }
 }

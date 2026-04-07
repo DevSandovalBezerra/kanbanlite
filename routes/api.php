@@ -84,6 +84,7 @@ return static function (Router $router, \PDO $pdo): void {
 
     // Column Routes
     $router->add('POST', '/api/columns', $wrap($columnController, 'create'));
+    $router->add('PATCH', '/api/columns', $wrap($columnController, 'update'));
     $router->add('POST', '/api/columns/reorder', $wrap($columnController, 'reorder'));
 
     // Task Routes
@@ -312,6 +313,5 @@ return static function (Router $router, \PDO $pdo): void {
         return HttpResponse::json(['results' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     });
 };
-
 
 

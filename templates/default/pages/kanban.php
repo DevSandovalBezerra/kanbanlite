@@ -41,7 +41,10 @@
             <div class="p-6 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-2.5 h-2.5 rounded-full <?php echo $accent; ?>"></div>
-                    <h3 class="font-outfit text-base font-bold text-slate-800 uppercase tracking-wide"><?php echo htmlspecialchars($column->name); ?></h3>
+                    <h3 class="font-outfit text-base font-bold text-slate-800 uppercase tracking-wide cursor-pointer"
+                        data-action="rename-column"
+                        role="button"
+                        tabindex="0"><?php echo htmlspecialchars($column->name); ?></h3>
                     <span class="text-[11px] font-bold bg-white/80 text-slate-500 px-2.5 py-0.5 rounded-full shadow-sm count">0</span>
                 </div>
             </div>
@@ -59,7 +62,8 @@
 
         <!-- Add Column -->
         <div class="w-80 min-w-[20rem] flex items-stretch py-4">
-            <div class="w-full flex items-center justify-center border-2 border-dashed border-slate-200 rounded-[32px] hover:border-indigo-400 hover:bg-white transition-all group cursor-pointer">
+            <div class="w-full flex items-center justify-center border-2 border-dashed border-slate-200 rounded-[32px] hover:border-indigo-400 hover:bg-white transition-all group cursor-pointer"
+                 data-action="add-column" role="button" tabindex="0">
                 <div class="text-center group-hover:scale-105 transition-transform">
                     <div class="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-3">
                         <span class="material-symbols-outlined text-slate-400 group-hover:text-indigo-600 text-2xl">add_circle</span>

@@ -32,6 +32,9 @@ $boardId = $pdo->lastInsertId();
 
 $pdo->exec("INSERT INTO boards (project_id, name, created_by, created_at, updated_at) VALUES ($projectId, 'Design & UX', $userId, NOW(), NOW())");
 
+// Ensure the creator is member (owner) of the project so that UI lists it
+$pdo->exec("INSERT INTO project_members (project_id, user_id, role_in_project, invited_by, accepted_at, created_at) VALUES ($projectId, $userId, 'owner', $userId, NOW(), NOW())");
+
 $cols = ['A Fazer', 'Em Progresso', 'Revisão', 'Concluído'];
 foreach ($cols as $idx => $name) {
     $pos = $idx + 1;

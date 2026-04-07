@@ -7,6 +7,7 @@
 // ── Global state ────────────────────────────────────────────────
 let currentTaskId    = null;
 let currentCompanyId = null;
+let currentBoardId   = null;
 let quillCreate      = null;   // Quill instance in create modal
 let quillDetail      = null;   // Quill instance in detail modal
 let companyUsers     = [];     // [{id, name, email}] — loaded once on boot
@@ -17,13 +18,124 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!board) return;
 
     currentCompanyId = parseInt(board.closest('[data-company-id]')?.dataset.companyId || '0', 10);
+    currentBoardId   = parseInt(board.closest('[data-board-id]')?.dataset.boardId || '0', 10);
 
     initQuill();
     initDragAndDrop();
+    initAddColumn();
+    initColumnRename();
     await loadCompanyUsers();   // load once before rendering tasks
     fetchAllTasks();
     initAttachmentDropzone();
 });
+
+function initAddColumn() {
+    const trigger = document.querySelector('[data-action="add-column"]');
+    if (!trigger) return;
+
+    const open = async () => {
+        if (!currentBoardId) {
+            Swal.fire('Erro', 'Board inválido.', 'error');
+            return;
+        }
+
+        const { value } = await Swal.fire({
+            title: 'Nova Coluna',
+            input: 'text',
+            inputPlaceholder: 'Ex: Backlog',
+            confirmButtonText: 'Criar',
+            showCancelButton: true,
+            cancelButtonText: 'Cancelar',
+            inputValidator: (v) => {
+                const name = (v || '').trim();
+                if (!name) return 'Informe um nome.';
+                if (name.length > 60) return 'Máximo de 60 caracteres.';
+                return null;
+            },
+        });
+
+        const name = (value || '').trim();
+        if (!name) return;
+
+        const position = document.querySelectorAll('[data-column-id]').length + 1;
+        try {
+            const res = await API.post('/api/columns', { board_id: currentBoardId, name, position });
+            if (res?.id) {
+                await Swal.fire({ icon: 'success', title: 'Coluna criada!', timer: 1200, showConfirmButton: false });
+                window.location.reload();
+                return;
+            }
+
+            Swal.fire('Erro', res?.error?.message || res?.error || 'Não foi possível criar a coluna.', 'error');
+        } catch {
+            Swal.fire('Erro', 'Falha na comunicação.', 'error');
+        }
+    };
+
+    trigger.addEventListener('click', open);
+    trigger.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            open();
+        }
+    });
+}
+
+function initColumnRename() {
+    const els = document.querySelectorAll('[data-column-id] [data-action="rename-column"]');
+    if (!els.length) return;
+
+    const open = async (el) => {
+        const columnWrap = el.closest('[data-column-id]');
+        const columnId = parseInt(columnWrap?.dataset.columnId || '0', 10);
+        if (!columnId) {
+            Swal.fire('Erro', 'Coluna inválida.', 'error');
+            return;
+        }
+
+        const currentName = (el.textContent || '').trim();
+
+        const { value } = await Swal.fire({
+            title: 'Renomear Coluna',
+            input: 'text',
+            inputValue: currentName,
+            confirmButtonText: 'Salvar',
+            showCancelButton: true,
+            cancelButtonText: 'Cancelar',
+            inputValidator: (v) => {
+                const name = (v || '').trim();
+                if (!name) return 'Informe um nome.';
+                if (name.length > 60) return 'Máximo de 60 caracteres.';
+                return null;
+            },
+        });
+
+        const name = (value || '').trim();
+        if (!name || name === currentName) return;
+
+        try {
+            const res = await API.patch('/api/columns', { id: columnId, name });
+            if (res?.ok) {
+                el.textContent = name;
+                return;
+            }
+
+            Swal.fire('Erro', res?.error?.message || res?.error || 'Não foi possível renomear a coluna.', 'error');
+        } catch {
+            Swal.fire('Erro', 'Falha na comunicação.', 'error');
+        }
+    };
+
+    els.forEach((el) => {
+        el.addEventListener('dblclick', () => open(el));
+        el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                open(el);
+            }
+        });
+    });
+}
 
 // ── Company users ─────────────────────────────────────────────────
 async function loadCompanyUsers() {
