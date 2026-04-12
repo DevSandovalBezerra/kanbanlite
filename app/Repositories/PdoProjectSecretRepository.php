@@ -25,7 +25,7 @@ final class PdoProjectSecretRepository implements ProjectSecretRepository
             if ($driver === 'sqlite') {
                 $stmt = $this->pdo->query("PRAGMA table_info('project_secrets')");
                 $cols = array_map(
-                    static fn (array $row): string => (string) ($row['name'] ?? ''),
+                    static fn (array $row): string => strtolower((string) ($row['name'] ?? $row['NAME'] ?? '')),
                     $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : []
                 );
                 $hasTitle = in_array('title', $cols, true);
@@ -34,17 +34,10 @@ final class PdoProjectSecretRepository implements ProjectSecretRepository
                 return $this->supportsMetaColumns;
             }
 
-            $stmt = $this->pdo->prepare(
-                "SELECT COLUMN_NAME
-                 FROM INFORMATION_SCHEMA.COLUMNS
-                 WHERE TABLE_SCHEMA = DATABASE()
-                   AND TABLE_NAME = 'project_secrets'
-                   AND COLUMN_NAME IN ('title', 'description')"
-            );
-            $stmt->execute();
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM project_secrets");
             $cols = array_map(
-                static fn (array $row): string => (string) ($row['COLUMN_NAME'] ?? ''),
-                $stmt->fetchAll(PDO::FETCH_ASSOC)
+                static fn (array $row): string => strtolower((string) ($row['Field'] ?? $row['field'] ?? $row['FIELD'] ?? '')),
+                $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : []
             );
 
             $hasTitle = in_array('title', $cols, true);
@@ -98,6 +91,14 @@ final class PdoProjectSecretRepository implements ProjectSecretRepository
     {
         $now = date('Y-m-d H:i:s');
         if ($this->hasMetaColumns()) {
+            $title = property_exists($secret, 'title') ? $secret->title : null;
+            $description = property_exists($secret, 'description') ? $secret->description : null;
+            if ((!property_exists($secret, 'title') || !property_exists($secret, 'description')) && method_exists($secret, 'toArray')) {
+                $data = $secret->toArray();
+                if (!property_exists($secret, 'title') && array_key_exists('title', $data)) $title = $data['title'];
+                if (!property_exists($secret, 'description') && array_key_exists('description', $data)) $description = $data['description'];
+            }
+
             $stmt = $this->pdo->prepare(
                 'INSERT INTO project_secrets (project_id, secret_key, title, description, secret_value_enc, created_by, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
@@ -105,8 +106,8 @@ final class PdoProjectSecretRepository implements ProjectSecretRepository
             $stmt->execute([
                 $secret->projectId,
                 $secret->secretKey,
-                $secret->title,
-                $secret->description,
+                $title,
+                $description,
                 $secret->secretValueEnc,
                 $secret->createdBy,
                 $now,
@@ -133,6 +134,14 @@ final class PdoProjectSecretRepository implements ProjectSecretRepository
     public function update(ProjectSecretDTO $secret): bool
     {
         if ($this->hasMetaColumns()) {
+            $title = property_exists($secret, 'title') ? $secret->title : null;
+            $description = property_exists($secret, 'description') ? $secret->description : null;
+            if ((!property_exists($secret, 'title') || !property_exists($secret, 'description')) && method_exists($secret, 'toArray')) {
+                $data = $secret->toArray();
+                if (!property_exists($secret, 'title') && array_key_exists('title', $data)) $title = $data['title'];
+                if (!property_exists($secret, 'description') && array_key_exists('description', $data)) $description = $data['description'];
+            }
+
             $stmt = $this->pdo->prepare(
                 'UPDATE project_secrets
                  SET secret_key = ?, title = ?, description = ?, secret_value_enc = ?, updated_at = ?
@@ -141,8 +150,8 @@ final class PdoProjectSecretRepository implements ProjectSecretRepository
 
             return $stmt->execute([
                 $secret->secretKey,
-                $secret->title,
-                $secret->description,
+                $title,
+                $description,
                 $secret->secretValueEnc,
                 date('Y-m-d H:i:s'),
                 $secret->id,
